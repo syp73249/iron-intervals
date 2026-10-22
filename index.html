@@ -1,0 +1,567 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Iron Intervals</title>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Iron Intervals">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#15171b">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icons/icon-180.png">
+<link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@700;800;900&family=Barlow:wght@400;500;600&family=Barlow+Condensed:wght@500;600;700&display=swap">
+<style>
+  /* Layout: one-screen phone app; four views swap in place. Categories wear bumper-plate colors. */
+  :root {
+    --floor: #15171b;      /* rubber gym floor */
+    --mat: #1e2127;        /* raised surface */
+    --line: #2d3139;
+    --chalk: #eeeae1;      /* primary text */
+    --dim: #8d929c;
+    --push: #e0473e;       /* red plate */
+    --pull: #3a78e0;       /* blue plate */
+    --squat: #ecbe2a;      /* yellow plate */
+    --hinge: #2fa35f;      /* green plate */
+    --on-plate: #121317;
+    --font-display: "Big Shoulders Display", "Arial Narrow", Impact, sans-serif;
+    --font-body: "Barlow", system-ui, -apple-system, sans-serif;
+    --font-label: "Barlow Condensed", "Arial Narrow", system-ui, sans-serif;
+    color-scheme: dark;
+    /* Keep content clear of the notch and home indicator. */
+    padding-top: env(safe-area-inset-top, 0px);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+    box-sizing: border-box;
+  }
+  [hidden] { display: none !important; }
+  img { max-width: 100%; }
+  html, body { height: 100%; }
+  body {
+    margin: 0;
+    background: var(--floor);
+    color: var(--chalk);
+    font-family: var(--font-body);
+    font-size: 16px;
+    -webkit-tap-highlight-color: transparent;
+    -webkit-user-select: none;
+    user-select: none;
+  }
+  .app {
+    height: 100%;
+    max-width: 480px;
+    margin: 0 auto;
+    padding-left: max(16px, env(safe-area-inset-left, 0px));
+    padding-right: max(16px, env(safe-area-inset-right, 0px));
+    padding-block: 20px 24px;
+    box-sizing: border-box;
+  }
+  .view { height: 100%; display: flex; flex-direction: column; gap: 20px; }
+
+  .eyebrow {
+    font-family: var(--font-label);
+    font-weight: 600;
+    font-size: 13px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--dim);
+  }
+  h1, h2 {
+    font-family: var(--font-display);
+    font-weight: 900;
+    text-transform: uppercase;
+    line-height: 0.9;
+    margin: 0;
+    text-wrap: balance;
+  }
+  h1 { font-size: clamp(64px, 22vw, 104px); letter-spacing: -0.01em; }
+  h2 { font-size: 44px; }
+  p { margin: 0; line-height: 1.45; }
+
+  /* Buttons */
+  .btn {
+    appearance: none;
+    border: 0;
+    border-radius: 14px;
+    font-family: var(--font-display);
+    font-weight: 800;
+    font-size: 24px;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    min-height: 64px;
+    padding: 0 20px;
+    cursor: pointer;
+    color: var(--on-plate);
+    background: var(--chalk);
+    transition: transform 0.08s ease;
+  }
+  .btn:active { transform: scale(0.98); }
+  .btn:focus-visible { outline: 3px solid var(--pull); outline-offset: 3px; }
+  .btn.ghost { background: transparent; color: var(--chalk); box-shadow: inset 0 0 0 2px var(--line); }
+  .btn.danger { background: var(--push); color: var(--chalk); }
+  .btn-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .link {
+    appearance: none; background: none; border: 0; padding: 8px 0;
+    color: var(--dim); font: 500 15px var(--font-body); cursor: pointer; align-self: flex-start;
+  }
+  .link:focus-visible { outline: 2px solid var(--pull); outline-offset: 2px; }
+
+  /* Plate tags */
+  .tag {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-family: var(--font-label); font-weight: 700; font-size: 14px;
+    letter-spacing: 0.1em; text-transform: uppercase;
+    padding: 4px 10px; border-radius: 999px;
+    background: var(--c, var(--line)); color: var(--on-plate);
+  }
+  [data-cat="push"]  { --c: var(--push); }
+  [data-cat="pull"]  { --c: var(--pull); }
+  [data-cat="squat"] { --c: var(--squat); }
+  [data-cat="hinge"] { --c: var(--hinge); }
+  [data-cat="pull"] .tag, .tag[data-cat="pull"],
+  [data-cat="push"] .tag, .tag[data-cat="push"] { color: var(--chalk); }
+
+  /* Home */
+  .home-hero { flex: 1; display: flex; flex-direction: column; justify-content: center; gap: 18px; }
+  .plates { display: flex; gap: 10px; }
+  .plate {
+    flex: 1; aspect-ratio: 1; max-width: 100%; border-radius: 50%;
+    background: var(--c);
+    display: grid; place-items: center;
+    box-shadow: inset 0 0 0 6px rgba(0,0,0,0.18);
+    position: relative;
+  }
+  .plate::after { content: ""; width: 22%; aspect-ratio: 1; border-radius: 50%; background: var(--floor); position: absolute; }
+  .plate-labels { display: flex; gap: 10px; }
+  .plate-labels span {
+    flex: 1; text-align: center;
+    font-family: var(--font-label); font-weight: 600; font-size: 13px;
+    letter-spacing: 0.1em; text-transform: uppercase; color: var(--dim);
+  }
+  .spec { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px; background: var(--line); border-radius: 12px; overflow: hidden; }
+  .spec div { background: var(--mat); padding: 12px 10px; display: flex; flex-direction: column; gap: 2px; }
+  .spec b { font-family: var(--font-display); font-weight: 800; font-size: 30px; line-height: 1; font-variant-numeric: tabular-nums; }
+  .spec span { font-family: var(--font-label); font-size: 13px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--dim); }
+
+  /* Builder */
+  .builder-head { display: flex; flex-direction: column; gap: 8px; }
+  .builder-head p { color: var(--dim); }
+  .lineup { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; flex: 1; }
+  .lineup li {
+    display: grid; grid-template-columns: 34px 1fr; align-items: center; gap: 12px;
+    background: var(--mat); border-radius: 14px; padding: 14px 16px;
+    border-left: 6px solid var(--c);
+    animation: deal 0.28s ease both;
+  }
+  .lineup li:nth-child(2) { animation-delay: 0.04s; }
+  .lineup li:nth-child(3) { animation-delay: 0.08s; }
+  .lineup li:nth-child(4) { animation-delay: 0.12s; }
+  @keyframes deal { from { opacity: 0.2; transform: translateX(-10px); } to { opacity: 1; transform: none; } }
+  .lineup .num { font-family: var(--font-display); font-weight: 800; font-size: 34px; color: var(--dim); text-align: center; }
+  .lineup .body { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+  .lineup .meta { display: flex; gap: 8px; align-items: center; }
+  .lineup .region { font-family: var(--font-label); font-size: 13px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--dim); }
+  .lineup .name { font-family: var(--font-display); font-weight: 800; font-size: 28px; line-height: 1; text-transform: uppercase; }
+
+  /* Active workout */
+  .active-top { display: flex; justify-content: space-between; align-items: baseline; }
+  .active-top b { font-family: var(--font-display); font-weight: 800; font-size: 22px; font-variant-numeric: tabular-nums; }
+  .current { display: flex; flex-direction: column; align-items: center; gap: 10px; text-align: center; min-height: 104px; justify-content: flex-end; }
+  .current .name { font-family: var(--font-display); font-weight: 900; font-size: clamp(40px, 12vw, 56px); line-height: 0.92; text-transform: uppercase; text-wrap: balance; }
+  .ring-wrap { position: relative; width: min(78vw, 300px); max-width: 100%; aspect-ratio: 1; margin: 0 auto; flex-shrink: 0; }
+  .ring-wrap svg { width: 100%; height: 100%; transform: rotate(-90deg); }
+  .ring-track { fill: none; stroke: var(--mat); stroke-width: 7; }
+  .ring-bar { fill: none; stroke: var(--c, var(--chalk)); stroke-width: 7; stroke-linecap: round; }
+  .clock {
+    position: absolute; inset: 0; display: grid; place-items: center;
+    font-family: var(--font-display); font-weight: 900; font-size: clamp(76px, 26vw, 112px);
+    font-variant-numeric: tabular-nums; letter-spacing: -0.02em;
+  }
+  .clock.final { color: var(--c, var(--chalk)); animation: thump 1s ease-out infinite; }
+  @keyframes thump { 0% { transform: scale(1.08); } 40% { transform: scale(1); } }
+  .paused-badge {
+    position: absolute; left: 50%; bottom: 22%; transform: translateX(-50%);
+    font-family: var(--font-label); font-weight: 700; font-size: 14px; letter-spacing: 0.16em; text-transform: uppercase;
+    color: var(--floor); background: var(--chalk); padding: 3px 10px; border-radius: 999px;
+  }
+  .next { text-align: center; color: var(--dim); font-size: 16px; }
+  .next b { color: var(--chalk); font-weight: 600; }
+  .ticks { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; }
+  .ticks .round { display: grid; grid-template-columns: repeat(4, 1fr); gap: 3px; }
+  .ticks i { height: 8px; border-radius: 2px; background: var(--mat); display: block; }
+  .ticks i.done { background: var(--c); opacity: 0.55; }
+  .ticks i.now { background: var(--c); box-shadow: 0 0 0 2px var(--floor), 0 0 0 3px var(--c); }
+  .active-body { flex: 1; display: flex; flex-direction: column; justify-content: center; gap: 18px; min-height: 0; }
+  .confirm {
+    background: var(--mat); border-radius: 14px; padding: 16px; display: flex; flex-direction: column; gap: 12px;
+  }
+  .confirm p { font-weight: 600; }
+  .is-paused .ring-bar, .is-paused .clock { opacity: 0.45; }
+
+  /* Done */
+  .done-body { flex: 1; display: flex; flex-direction: column; justify-content: center; gap: 18px; text-align: center; }
+  .gif-slot {
+    width: 100%; aspect-ratio: 498 / 266; max-width: 100%; border-radius: 16px;
+    background: var(--mat); overflow: hidden;
+  }
+  .gif-slot img { width: 100%; height: 100%; object-fit: cover; }
+  .done-body h2 { font-size: clamp(48px, 15vw, 68px); }
+  .done-body p { color: var(--dim); font-size: 17px; }
+  .done-body p strong { color: var(--chalk); }
+
+  @media (prefers-reduced-motion: reduce) {
+    .lineup li, .clock.final { animation: none; }
+    .btn { transition: none; }
+  }
+</style>
+</head>
+<body>
+
+<div class="app">
+
+  <!-- HOME -->
+  <section class="view" id="view-home">
+    <div class="home-hero">
+      <div class="eyebrow">Push · Pull · Squat · Hinge</div>
+      <h1>Iron<br>Intervals</h1>
+      <div>
+        <div class="plates" aria-hidden="true">
+          <div class="plate" data-cat="push"></div>
+          <div class="plate" data-cat="pull"></div>
+          <div class="plate" data-cat="squat"></div>
+          <div class="plate" data-cat="hinge"></div>
+        </div>
+      </div>
+      <div class="plate-labels" aria-hidden="true"><span>Push</span><span>Pull</span><span>Squat</span><span>Hinge</span></div>
+      <div class="spec">
+        <div><b>5</b><span>Rounds</span></div>
+        <div><b>20</b><span>Sets</span></div>
+        <div><b>90s</b><span>Per set</span></div>
+      </div>
+    </div>
+    <button class="btn" id="btn-new">Start new workout</button>
+  </section>
+
+  <!-- BUILDER -->
+  <section class="view" id="view-builder" hidden>
+    <button class="link" id="btn-builder-back">← Home</button>
+    <div class="builder-head">
+      <div class="eyebrow">Workout builder</div>
+      <h2>Today's four</h2>
+      <p>Upper and lower body alternate. Shuffle as many times as you like.</p>
+    </div>
+    <ol class="lineup" id="lineup"></ol>
+    <div class="btn-row">
+      <button class="btn ghost" id="btn-shuffle">Shuffle</button>
+      <button class="btn" id="btn-start">Start</button>
+    </div>
+  </section>
+
+  <!-- ACTIVE -->
+  <section class="view" id="view-active" hidden>
+    <div class="active-top">
+      <div><span class="eyebrow">Round </span><b id="round-label">1/5</b></div>
+      <div><span class="eyebrow">Set </span><b id="set-label">1/20</b></div>
+    </div>
+    <div class="active-body" id="active-body">
+      <div class="current" id="current">
+        <span class="tag" id="cur-tag">Push</span>
+        <div class="name" id="cur-name">Get ready</div>
+      </div>
+      <div class="ring-wrap" id="ring-wrap">
+        <svg viewBox="0 0 100 100" aria-hidden="true">
+          <circle class="ring-track" cx="50" cy="50" r="44"></circle>
+          <circle class="ring-bar" id="ring-bar" cx="50" cy="50" r="44"></circle>
+        </svg>
+        <div class="clock" id="clock" role="timer" aria-live="off">1:30</div>
+        <div class="paused-badge" id="paused-badge" hidden>Paused</div>
+      </div>
+      <div class="next" id="next">Next: <b>—</b></div>
+      <div class="ticks" id="ticks" aria-hidden="true"></div>
+    </div>
+    <div class="btn-row" id="controls">
+      <button class="btn ghost" id="btn-end">End</button>
+      <button class="btn" id="btn-pause">Pause</button>
+    </div>
+    <div class="confirm" id="confirm-end" hidden>
+      <p>End this workout? Your progress won't be saved.</p>
+      <div class="btn-row">
+        <button class="btn ghost" id="btn-end-cancel">Keep going</button>
+        <button class="btn danger" id="btn-end-confirm">End workout</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- DONE -->
+  <section class="view" id="view-done" hidden>
+    <div class="done-body">
+      <div class="gif-slot" id="gif-slot"><img src="assets/trump-trump-dance.gif" alt="Donald Trump dancing in a red hat, captioned Tremendous"></div>
+      <div class="eyebrow">20 of 20 sets</div>
+      <h2>Huge.</h2>
+      <p id="done-msg"></p>
+    </div>
+    <button class="btn" id="btn-home">Back to home</button>
+  </section>
+
+</div>
+
+<script>
+(() => {
+  const EXERCISES = {
+    push:  ["Shoulder press", "Push-up", "Dips", "Banded push-up"],
+    pull:  ["1-arm row", "Upright row", "Bent-over row", "Chin-up", "Pull-up", "Banded curl"],
+    squat: ["Bodyweight squat", "Goblet squat", "Bulgarian split squat", "Lateral lunge"],
+    hinge: ["KB swing", "RDL", "Single-leg RDL", "Banded good morning"],
+  };
+  const CATS = {
+    push:  { label: "Push",  region: "Upper" },
+    pull:  { label: "Pull",  region: "Upper" },
+    squat: { label: "Squat", region: "Lower" },
+    hinge: { label: "Hinge", region: "Lower" },
+  };
+  const INTERVAL = 90;   // seconds per set, fixed
+  const ROUNDS = 5;
+  const PREP = 10;       // get-ready lead-in before set 1
+  const TOTAL_SETS = ROUNDS * 4;
+
+  const DONE_LINES = [
+    "Twenty sets. <strong>Nobody has ever done sets like these.</strong> People are saying it's the best workout in history.",
+    "<strong>The biggest, most beautiful workout.</strong> Many experts, very smart people, said it couldn't be done. You did it.",
+    "Push, pull, squat, hinge. <strong>We're going to win so much you'll get tired of winning.</strong>",
+  ];
+
+  const $ = (id) => document.getElementById(id);
+  const views = ["home", "builder", "active", "done"];
+  function show(name) {
+    views.forEach((v) => { $("view-" + v).hidden = v !== name; });
+  }
+
+  // ---------- Workout builder ----------
+  const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
+  const coin = () => Math.random() < 0.5;
+  const maybeSwap = (pair) => (coin() ? pair : [pair[1], pair[0]]);
+
+  // One exercise per category, alternating upper/lower body so two upper
+  // (or two lower) moves never sit back to back, including round wraparound.
+  function buildWorkout() {
+    const upper = maybeSwap(["push", "pull"]);
+    const lower = maybeSwap(["squat", "hinge"]);
+    const [a, b] = coin() ? [upper, lower] : [lower, upper];
+    return [a[0], b[0], a[1], b[1]].map((cat) => ({ cat, name: pick(EXERCISES[cat]) }));
+  }
+  const sameWorkout = (x, y) => x && y && x.every((e, i) => e.cat === y[i].cat && e.name === y[i].name);
+
+  let plan = null;
+  function shuffle() {
+    let next, tries = 0;
+    do { next = buildWorkout(); } while (sameWorkout(next, plan) && ++tries < 20);
+    plan = next;
+    renderLineup();
+  }
+  function renderLineup() {
+    $("lineup").innerHTML = plan.map((e, i) => `
+      <li data-cat="${e.cat}">
+        <span class="num">${i + 1}</span>
+        <div class="body">
+          <div class="meta"><span class="tag" data-cat="${e.cat}">${CATS[e.cat].label}</span><span class="region">${CATS[e.cat].region}</span></div>
+          <div class="name">${e.name}</div>
+        </div>
+      </li>`).join("");
+  }
+
+  // ---------- Audio ----------
+  let audio = null;
+  function unlockAudio() {
+    try {
+      // Play through the silent switch where Safari supports it.
+      if (navigator.audioSession) navigator.audioSession.type = "playback";
+    } catch (e) {}
+    try {
+      audio = audio || new (window.AudioContext || window.webkitAudioContext)();
+      if (audio.state === "suspended") audio.resume();
+      beep(1, 0.01, 0.0001); // silent primer inside the tap
+    } catch (e) { audio = null; }
+  }
+  function beep(freq, dur, vol = 0.35, delay = 0) {
+    if (!audio) return;
+    const t = audio.currentTime + delay;
+    const osc = audio.createOscillator();
+    const gain = audio.createGain();
+    osc.type = "square";
+    osc.frequency.value = freq;
+    gain.gain.setValueAtTime(vol, t);
+    gain.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    osc.connect(gain).connect(audio.destination);
+    osc.start(t);
+    osc.stop(t + dur + 0.02);
+  }
+  const countBeep = () => beep(880, 0.16);
+  const goBeep = () => beep(1320, 0.55);
+  const finishBeeps = () => { beep(1320, 0.18); beep(1320, 0.18, 0.35, 0.25); beep(1760, 0.6, 0.35, 0.5); };
+
+  // ---------- Wake lock ----------
+  let wakeLock = null;
+  async function keepAwake() {
+    try { if ("wakeLock" in navigator && !wakeLock) {
+      wakeLock = await navigator.wakeLock.request("screen");
+      wakeLock.addEventListener("release", () => { wakeLock = null; });
+    } } catch (e) { wakeLock = null; }
+  }
+  function releaseAwake() { try { wakeLock && wakeLock.release(); } catch (e) {} wakeLock = null; }
+
+  // ---------- Active workout ----------
+  // Time comes from wall-clock timestamps so the timer stays correct
+  // even if the phone throttles the page.
+  let run = null;
+  let loop = null;
+  const RING_C = 2 * Math.PI * 44;
+  $("ring-bar").style.strokeDasharray = RING_C;
+
+  function buildTicks() {
+    let html = "";
+    for (let r = 0; r < ROUNDS; r++) {
+      html += '<div class="round">' + plan.map((e, i) => `<i data-cat="${e.cat}" data-i="${r * 4 + i}"></i>`).join("") + "</div>";
+    }
+    $("ticks").innerHTML = html;
+  }
+
+  function startWorkout() {
+    unlockAudio();
+    keepAwake();
+    run = { startedAt: Date.now(), pausedAt: null, pausedTotal: 0, lastIdx: -2, lastBeepKey: null };
+    buildTicks();
+    $("confirm-end").hidden = true;
+    $("controls").hidden = false;
+    setPaused(false);
+    show("active");
+    tick();
+    loop = setInterval(tick, 100);
+  }
+
+  function elapsed() {
+    const now = run.pausedAt ?? Date.now();
+    return (now - run.startedAt - run.pausedTotal) / 1000;
+  }
+
+  function fmt(s) {
+    const m = Math.floor(s / 60);
+    return m + ":" + String(s % 60).padStart(2, "0");
+  }
+
+  function tick() {
+    if (!run) return;
+    const e = elapsed();
+    let idx, remain, total;
+    if (e < PREP) { idx = -1; remain = PREP - e; total = PREP; }
+    else {
+      const t = e - PREP;
+      idx = Math.floor(t / INTERVAL);
+      if (idx >= TOTAL_SETS) return finishWorkout();
+      remain = INTERVAL - (t - idx * INTERVAL);
+      total = INTERVAL;
+    }
+    const secs = Math.max(1, Math.ceil(remain - 1e-6));
+
+    // Sounds: start-of-set tone, then 3-2-1 at the end of each interval.
+    if (idx !== run.lastIdx) {
+      if (idx >= 0 && run.lastIdx === idx - 1) goBeep();
+      run.lastIdx = idx;
+      renderSet(idx);
+    }
+    const key = idx + ":" + secs;
+    if (secs <= 3 && run.lastBeepKey !== key && !run.pausedAt) {
+      run.lastBeepKey = key;
+      countBeep();
+    }
+
+    const clock = $("clock");
+    clock.textContent = fmt(secs);
+    clock.classList.toggle("final", secs <= 3 && !run.pausedAt);
+    $("ring-bar").style.strokeDashoffset = RING_C * (1 - remain / total);
+  }
+
+  function renderSet(idx) {
+    const cur = idx >= 0 ? plan[idx % 4] : null;
+    const nxt = plan[(idx + 1) % 4];
+    const body = $("active-body");
+    if (cur) {
+      body.dataset.cat = cur.cat;
+      $("cur-tag").hidden = false;
+      $("cur-tag").textContent = CATS[cur.cat].label;
+      $("cur-tag").dataset.cat = cur.cat;
+      $("cur-name").textContent = cur.name;
+    } else {
+      body.dataset.cat = plan[0].cat;
+      $("cur-tag").hidden = true;
+      $("cur-name").textContent = "Get ready";
+    }
+    $("round-label").textContent = Math.min(ROUNDS, Math.floor(Math.max(idx, 0) / 4) + 1) + "/" + ROUNDS;
+    $("set-label").textContent = Math.max(idx, 0) + 1 + "/" + TOTAL_SETS;
+    const last = idx === TOTAL_SETS - 1;
+    $("next").innerHTML = last ? "Last set. <b>Finish strong.</b>"
+      : idx < 0 ? `First up: <b>${plan[0].name}</b>`
+      : `Next: <b>${nxt.name}</b>`;
+    document.querySelectorAll("#ticks i").forEach((t) => {
+      const i = +t.dataset.i;
+      t.className = i < idx ? "done" : i === idx ? "now" : "";
+    });
+  }
+
+  function setPaused(p) {
+    if (!run) return;
+    if (p && !run.pausedAt) { run.pausedAt = Date.now(); releaseAwake(); }
+    if (!p && run.pausedAt) { run.pausedTotal += Date.now() - run.pausedAt; run.pausedAt = null; keepAwake(); }
+    $("btn-pause").textContent = p ? "Resume" : "Pause";
+    $("paused-badge").hidden = !p;
+    $("view-active").classList.toggle("is-paused", p);
+    tick();
+  }
+
+  function stopRun() {
+    clearInterval(loop); loop = null; run = null; releaseAwake();
+  }
+
+  function finishWorkout() {
+    stopRun();
+    finishBeeps();
+    $("done-msg").innerHTML = pick(DONE_LINES);
+    show("done");
+  }
+
+  // ---------- Wiring ----------
+  $("btn-new").addEventListener("click", () => { plan = null; shuffle(); show("builder"); });
+  $("btn-builder-back").addEventListener("click", () => show("home"));
+  $("btn-shuffle").addEventListener("click", shuffle);
+  $("btn-start").addEventListener("click", startWorkout);
+  $("btn-pause").addEventListener("click", () => { unlockAudio(); setPaused(!run.pausedAt); });
+  $("btn-end").addEventListener("click", () => {
+    setPaused(true);
+    $("controls").hidden = true;
+    $("confirm-end").hidden = false;
+  });
+  $("btn-end-cancel").addEventListener("click", () => {
+    $("confirm-end").hidden = true;
+    $("controls").hidden = false;
+    setPaused(false);
+  });
+  $("btn-end-confirm").addEventListener("click", () => { stopRun(); show("home"); });
+  $("btn-home").addEventListener("click", () => show("home"));
+
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible" && run && !run.pausedAt) { keepAwake(); tick(); }
+  });
+
+  // Debug hook for testing: skip ahead by N seconds.
+  window.__skip = (s) => { if (run) { run.startedAt -= s * 1000; tick(); } };
+})();
+
+// Offline support once installed on the home screen.
+if ("serviceWorker" in navigator) {
+  addEventListener("load", () => navigator.serviceWorker.register("sw.js").catch(() => {}));
+}
+</script>
+</body>
+</html>
